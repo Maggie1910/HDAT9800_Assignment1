@@ -1,0 +1,299 @@
+---
+title: "HDAT9800 2024 Individual Assessment 1"
+author: "Maggie Burmeister"
+date: "2024-06-17"
+output:
+  html_document:
+    highlight: tango
+    df_print: paged
+    toc: true
+    toc_float: true
+    number_sections: true
+    fig_width: 14
+    fig_height: 24
+---
+
+# Prepare
+
+## Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Install Package
+
+```{r install_load_package}
+if (!requireNamespace("rvest", quietly = TRUE)) install.packages("rvest")
+if (!requireNamespace("knitr", quietly = TRUE)) install.packages("knitr")
+if (!requireNamespace("httr", quietly = TRUE)) install.packages("httr")
+if (!requireNamespace("readr", quietly = TRUE)) install.packages("readr")
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("Hmisc", quietly = TRUE)) install.packages("Hmisc")
+if (!requireNamespace("details", quietly = TRUE)) install.packages("details")
+library(httr)
+library(readr)
+library(tidyverse)
+library(knitr)
+library(Hmisc) #Library for describe data
+library(details)
+library(rvest)
+library(knitr)
+library(rmarkdown)
+library(rlang)
+library(purrr)
+library(gridExtra)
+library(grid)
+```
+
+## Load and Export .Rdata
+
+```{r load_from_Rdata}
+data <- readRDS("data.rds")
+data_clean <- readRDS("data_clean.rds")
+```
+
+```{r export_to_Rdata}
+# Save a single object to a file
+saveRDS(data, "data.rds")
+saveRDS(data_clean, "data_clean.rds")
+```
+
+# Task
+
+## Load data from link
+
+### Load data
+
+```{r read_data}
+# URL of CSV file
+data_url <- "https://figshare.com/ndownloader/files/35249488"
+
+# Get data from URL
+data_response <- GET(data_url)
+
+# Checking errors
+if (http_error(data_response)) {
+  stop("Failed to download file")
+}
+
+# Read data from a response data
+data <- read_csv(content(data_response, "text"))
+
+# Represent data
+head(data)
+```
+
+### Describe Raw Data
+
+```{r summarise_raw_data}
+summarise_raw_data <- data %>%
+  describe()
+
+details::details(
+  summary = 'Click to show result!',
+  summarise_raw_data
+)
+```
+
+## Clean and transform dataframe
+
+### Clean column name
+
+#### Column name before clean
+
+```{r column_name_original}
+names(data)
+```
+
+#### Column name after clean
+
+-   Copy dataframe to data_clean
+
+```{r copy_dataframe}
+# Copy dataframe to data_clean
+data_clean <- data %>%
+  as_tibble()
+```
+
+-   Clean columnn name
+
+```{r column_name_clean}
+# Use regex to clean " ", "-", "()" in column name
+names(data_clean) <- gsub(" ", "", names(data))
+names(data_clean) <- gsub("[()-]", "_", names(data_clean))
+names(data_clean)
+```
+
+### Converting categorical columns to factors, with appropriate labels for each factor value
+
+#### Create categorical dictionary
+
+```{r categorical_dict}
+# Dictionary for column categorical
+category_dict <- list(
+  Gender = c("1" = "Male", "2" = "Female"),
+  Ethnic = c("1" = "Asian", "2" = "Afro", "3" = "Caucasian", "4" = "Other"),
+  BaseDrugCombo = c("0" = "FTC + TDF", "1" = "3TC + АВС", "2" = "FTC + TAF", "3" = "DRV + FTC + TDF", "4" = "FTC + RTVB + TDF", "5" = "Other"),
+  Comp.INI = c("0" = "DTG", "1" = "RAL", "2" = "EVG", "3" = "Not Applied"),
+  Comp.NNRTI = c("0" = "NVP", "1" = "EFV", "2" = "RPV", "3" = "Not Applied"),
+  ExtraPI = c("0" = "DRV", "1" = "RTVB", "2" = "LPV", "3" = "RTV", "4" = "ATV", "5" = "Not Applied"),
+  Extrapk_En = c("0" = FALSE, "1" = TRUE),
+  VL_M_ = c("0" = FALSE, "1" = TRUE),
+  CD4_M_ = c("0" = FALSE, "1" = TRUE),
+  Drug_M_ = c("0" = FALSE, "1" = TRUE)
+)
+```
+
+#### Create function convert number to categorical label
+
+```{r function_convert_categorical}
+# Create function convert number to categorical label
+map_to_labels <- function(column, dict) {
+  return(factor(column, levels = names(dict), labels = dict))
+}
+```
+
+#### Apply the function to categorical columns using a loop
+
+```{r apply_func_categorical}
+# Apply the function to categorical columns using a loop
+for (col in names(category_dict)) {
+  data_clean[[col]] <- map_to_labels(data_clean[[col]], category_dict[[col]])
+  print(paste("Column '", col, "' is converted."))
+}
+```
+
+#### Show dataframe with categorical columns is converted
+
+-   Tibble data
+
+```{r df_categorical_converted}
+data_clean[1:100, ]
+```
+
+## Data Dictionary Table
+
+```{r data_dictionary}
+# Set the URL of the website that contains the table you want to get
+url_dict_table <- "https://healthgym.ai/antiviral-hiv/"
+
+# Read HTML from webpage
+webpage <- read_html(url_dict_table)
+
+# Get the table from the webpage
+# Note: '.table' is an example of CSS selector.You can adjust it depend on
+# the structure of a specific webpage.
+table_data <- webpage %>% 
+  html_node("table") %>% 
+  html_table()
+
+# Showing table in R Markdown
+#table(table_data, caption = "Data Dictionary Table")
+table_data
+```
+
+## Visualize the data of each column
+
+```{r}
+data_clean %>%
+  select(PatientID, VL) %>%
+  group_by(PatientID) %>%
+  summarise(mean(VL, na.rm = TRUE))
+```
+
+```{r test_groupdata}
+column_name = "VL"
+data_clean %>%
+  group_by(PatientID) %>%
+  summarise(!!paste0(column_name, "_mean") := mean(!!sym(column_name), na.rm = TRUE))
+```
+
+```{r func_visualize_data}
+# Function create plot for each column
+create_plot <- function(data, column) {
+  
+  # Define ID column name
+  ID_col_name = "PatientID"
+  column_lst = c("PatientID", "...1", "Timepoints")
+  
+  # Define base theme
+  base_theme <- theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+      axis.title = element_text(size = 8),
+      axis.text = element_text(size = 6),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 6),
+      legend.key.size = unit(0.5, "cm")
+  )
+  
+  if (column %in% column_lst) {
+    # With column ID, create a ggplot with text info
+    plot_val <- ggplot() + 
+      annotate("text", x = 0.5, y = 0.5, label = paste("There is no graph for the column ", column), size = 3) +
+      ggtitle(paste("Visualization for ", column)) +
+      theme_void() +
+      theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 10))
+    
+  } else if (is.factor(data[[column]])) {
+    # Bar chart for factor data
+    plot_val <- ggplot(data, aes(x = !!sym(column), fill=!!sym(column))) +
+      geom_bar() +
+      scale_fill_brewer(palette="Blues") +
+      ggtitle(paste("Visualization for", column)) +
+      coord_flip() +
+      labs(x = column, y = "Count") +
+      theme(axis.text.y = element_text(angle = 0)) +
+      theme_minimal() +
+      base_theme
+    
+  } else {
+    
+    # Histogram chart for numeric data
+    # Group the data by PatientID, averaging the data 
+    # across observations across all patients.
+    data_processed <- data %>%
+      group_by(!!sym(ID_col_name)) %>%
+      summarise(mean_value = mean(!!sym(column), na.rm = TRUE))
+    
+    # Visualization
+    plot_val <- ggplot(data_processed, aes(x = mean_value)) +
+      geom_histogram(aes(y=after_stat(density)), bins = 30, colour = "#FFFFFF", fill = "#9ECAE1") +
+      geom_density(color = "blue") +
+      ggtitle(paste("Visualization for", column)) +
+      labs(x = column, y = "Frequency") +
+      theme_minimal() +
+      base_theme
+
+  }
+  return(plot_val)
+}
+
+# Create a list of charts
+plot_list <- map(names(data_clean), ~create_plot(data_clean, .x))
+```
+
+```{r visualize_data, fig.width=14, fig.height=26}
+# Arrange charts on a 2-column grid
+# grid.arrange(grobs = plot_list, ncol = 2)
+
+# Add margin for subplot grid
+margin_grid = theme(plot.margin = unit(c(0.5, 1, 1, 0.5), "cm"))
+
+tg <- textGrob('Health Data Visualisation & Communication', gp = gpar(fontsize = 16, fontface = 'bold'))
+sg <- textGrob('Visualization Data of ART for HIV Antiretroviral Therapy for HIV (ART for HIV)', gp = gpar(fontsize = 10))
+margin_title <- unit(0.5, "line")
+
+# Grid each column plot
+
+
+grid.arrange(tg, sg, 
+             arrangeGrob(grobs = lapply(plot_list, "+", margin_grid),
+                         ncol = 2),
+             heights = unit.c(grobHeight(tg) + 1.2*margin_title, 
+                              grobHeight(sg) + margin_title, 
+                              unit(1,"null")))
+
+```
