@@ -1,2 +1,2 @@
-# Clinical-Diabetes-Analysis
-Analysis of Clinical Diabetes Dataset using Microsoft Office Suite
+# HDAT9800_Assignment1
+Visualize by R
