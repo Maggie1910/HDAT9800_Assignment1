@@ -1,0 +1,469 @@
+---
+title: "HDAT9800 2024 Individual Assessment 3"
+author: "Maggie Burmeister"
+date: "2024-07-16"
+format:
+  html:
+    theme: cosmo
+    fontsize: 1.1em
+    linestretch: 1.5
+    highlight-style: tango
+    code-line-numbers: true
+    code-copy: true
+    code-link: true
+    df-print: paged
+    toc: true
+    toc-location: left
+    toc-depth: 4
+    number-sections: true
+    number-depth: 4
+    smooth-scroll: true
+    warning: false
+slide-format: revealjs
+editor: visual
+---
+# Prepare
+
+## Install package
+
+```{r}
+#| label: install_load_package
+#| output: false
+
+if (!requireNamespace("rvest", quietly = TRUE)) install.packages("rvest")
+if (!requireNamespace("knitr", quietly = TRUE)) install.packages("knitr")
+if (!requireNamespace("httr", quietly = TRUE)) install.packages("httr")
+if (!requireNamespace("readr", quietly = TRUE)) install.packages("readr")
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("Hmisc", quietly = TRUE)) install.packages("Hmisc")
+if (!requireNamespace("details", quietly = TRUE)) install.packages("details")
+if (!requireNamespace("janitor", quietly = TRUE)) install.packages("janitor", dependencies = TRUE)
+if (!requireNamespace("paletteer", quietly = TRUE)) install.packages("paletteer", dependencies = TRUE)
+if (!requireNamespace("shiny", quietly = TRUE)) install.packages("shiny", dependencies = TRUE)
+if (!requireNamespace("flexdashboard", quietly = TRUE)) install.packages("flexdashboard", dependencies = TRUE)
+if (!requireNamespace("shinyWidgets", quietly = TRUE)) install.packages("shinyWidgets", dependencies = TRUE)
+library(readr)
+library(dplyr)
+library(janitor)
+library(tidyverse)
+library(ggplot2)
+library(shiny)
+library(shinydashboard)
+library(flexdashboard)
+library(shinyWidgets)
+library(bslib)
+library(tools)
+library(Hmisc) #Library for describe data
+library(details)
+library(rvest)
+library(rmarkdown)
+library(rlang)
+library(purrr)
+library(gridExtra)
+library(grid)
+library(paletteer)
+```
+
+# Task 1: Prepare data set
+
+## Load and represent the dataset
+
+```{r}
+#| label: read_csv_data
+#| output: false                                                                                                           
+# Read data from the the csv file
+zigong <- read_csv("C:/Users/maggi/OneDrive/Documents/GitHub/individual-marked-assessment-3-Maggie1910/zigong/dat.csv", show_col_types = FALSE)
+```
+
+```{r}
+#| label: preview_dataset
+
+#Represent data
+head(zigong)
+```
+## Describe raw data
+
+### Summarise
+
+```{r}
+#| label: summarise_raw_data
+
+summarise_raw_data <- zigong %>%
+  describe()
+```
+
+
+::: {.callout-note collapse="true"}
+### Expand to shrink content
+
+```{r}
+#| label: preview_summarise_data
+
+summarise_raw_data
+```
+:::
+
+
+## Clean and transform data frame
+
+### Clean column names
+
+#### Column name before clean
+
+```{r}
+#| label: column_name_original
+
+col_name_before <- names(zigong)
+```
+
+::: {.callout-note collapse="true"}
+#### Expand to shrink content
+
+```{r}
+#| label: review_col_name_before
+
+col_name_before
+```
+:::
+
+#### Column name after clean
+
+-   Copy data frame to data_clean: this this case zigong to zigong_clean
+
+```{r}
+#| label: copy_dataframe
+
+# Copy data frame to data_clean
+zigong_clean <- zigong %>%
+  as_tibble()
+```
+
+-   Clean column names
+
+```{r}
+#| label: column_name_clean
+
+zigong_clean <- zigong %>% 
+  clean_names()
+
+col_name_after <- names(zigong_clean)
+```
+
+::: {.callout-note collapse="true"}
+#### Expand to shrink content
+
+```{r}
+#| label: review_col_name_after
+
+col_name_after
+```
+:::
+
+### Converting categorical columns to factors
+
+#### Review data before convert data
+
+```{r}
+#| label: review_df_convert_data
+
+head(zigong_clean)
+```
+
+#### Convert and transform data
+
+```{r}
+#| label: columns_to_factorize
+
+# Convert relevant columns to factors with appropriate labels
+# Function to convert to factor
+convert_to_factor <- function(df, cols) {
+  for (col in cols) {
+    if (col %in% names(df)) {
+      df[[col]] <- as.factor(df[[col]])
+      print(paste("Column", col, "is converted to factor"))
+    } else {
+      print(paste("Column", col, "does not exist in the dataframe"))
+    }
+  }
+  return(df)
+}
+
+## Column name list
+categorical_columns <- c("destination_discharge", "admission_ward", "admission_way", "occupation", "discharge_department", "gender", "type_of_heart_failure", "nyha_cardiac_function_classification", "Killip_grade", "type_ii_respiratory_failure", "respiratory_support", "consciousness", "outcome_during_hospitalization")
+
+zigong_clean <- convert_to_factor(zigong_clean, categorical_columns)
+```
+
+#### Review data after convert data
+
+```{r}
+#| label: review_df_after_convert
+
+head(zigong_clean)
+```
+
+### Renaming and Re-labeling the age_cat column
+
+#### Review `levels` column age_cat before processing
+
+```{r}
+#| label: review_levels_age_cat_before
+
+levels(
+  as.factor(
+    zigong_clean[["age_cat"]]
+    )
+  )
+```
+
+#### Renaming and re-labeling column
+
+```{r}
+#| label: re-labeling_age-cat_column
+
+# Define proper labels for the age_cat column
+age_labels <- c("21-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90+")
+
+# Relabel the age_cat column
+zigong_clean <- zigong_clean %>%
+  mutate(age_cat = factor(age_cat, labels = age_labels))
+```
+
+#### Review `levels` column age_cat after processing
+
+```{r}
+#| label: review_levels_age_cat_after
+
+levels(
+  as.factor(
+    zigong_clean[["age_cat"]]
+    )
+  )
+```
+
+#### View data frame
+
+```{r}
+#| label: review_df_age_cat_after
+
+head(zigong_clean)
+```
+
+# Task 2: Shiny app
+
+## Ensure the 'age' column is numeric
+
+```{r}
+#| label: ensure age_cat is numeric
+zigong_clean <- zigong_clean %>%
+  mutate(age_cat = as.numeric(age_cat))
+```
+
+## Define UI for the Shiny app
+
+### Define UI for filter columns
+
+```{r}
+ui <- fluidPage(
+  titlePanel("Filter Columns Charts"),
+  sidebarLayout(
+    sidebarPanel(
+      tabsetPanel(
+        tabPanel("Admission Ward",
+                 checkboxGroupInput("wards", "Select Admission Wards:", 
+                                    choices = levels(zigong_clean$admission_ward), 
+                                    selected = levels(zigong_clean$admission_ward))
+        ),
+        tabPanel("Occupation",
+                 checkboxGroupInput("occupations", "Select Occupations:", 
+                                    choices = levels(zigong_clean$occupation), 
+                                    selected = levels(zigong_clean$occupation))
+        )
+      )
+    ),
+    mainPanel(
+      tabsetPanel(
+        tabPanel("Admission Ward Plot",
+                 plotOutput("wardPlot")
+        ),
+        tabPanel("Occupation Plot",
+                 plotOutput("occupationPlot")
+        )
+      )
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  
+  output$wardPlot <- renderPlot({
+    filteredWardData <- zigong_clean %>%
+      filter(admission_ward %in% input$wards)
+    
+    ggplot(filteredWardData, aes(x = admission_ward)) +
+      geom_bar(aes(fill = admission_ward)) +
+      geom_text(stat = "count", aes(label = ..count..), vjust = -0.5) +
+      theme_minimal() +
+      labs(title = "Count of Admission Ward", x = "Admission Ward", y = "Count") +
+      scale_fill_brewer(palette = "Blues")
+  })
+  
+  output$occupationPlot <- renderPlot({
+    filteredOccupationData <- zigong_clean %>%
+      filter(occupation %in% input$occupations)
+    
+    ggplot(filteredOccupationData, aes(x = occupation)) +
+      geom_bar(aes(fill = occupation)) + 
+      geom_text(stat = "count", aes(label = ..count..), vjust = -0.5) +
+      theme_minimal() +
+      labs(title = "Count of Occupation", x = "Occupation", y = "Count") +
+      scale_fill_brewer(palette = "Blues")
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+
+```
+
+### Define UI for interactivity and filter columns
+
+```{r}
+# Define UI---------------------------------------------------------------------
+ui <- navbarPage(
+  title = "HDAT9800 - Individual Assessment 3",
+  theme = bs_theme(preset = "sandstone"),
+  
+  tabPanel(
+    title = "Dashboard Zigong",
+    page_sidebar(
+      title = "Dashboard Zigong",
+      sidebar = sidebar(
+        "Sidebar", 
+        position = "left",
+        selectInput(
+          inputId = "y",
+          label = "Y-axis:",
+          choices = c(
+            "Systolic Blood Pressure" = "systolic_blood_pressure",
+            "Diastolic Blood Pressure" = "diastolic_blood_pressure",
+            "Weight" = "weight",
+            "Height" = "height",
+            "BMI" = "bmi",
+            "High Sensitivity Troponin" = "high_sensitivity_troponin",
+            "Pulse" = "pulse",
+            "Myocardial Infarction" = "myocardial_infarction",
+            "Congestive Heart Failure" = "congestive_heart_failure",
+            "Periphehral Vascular Disease" = "peripheral_vascular_disease"
+          ),
+          selected = "systolic_blood_pressure"
+        ),
+        
+        selectInput(
+          inputId = "x",
+          label = "X-axis:",
+          choices = c(
+            "Systolic Blood Pressure" = "systolic_blood_pressure",
+            "Diastolic Blood Pressure" = "diastolic_blood_pressure",
+            "Weight" = "weight",
+            "Height" = "height",
+            "BMI" = "bmi",
+            "High Sensitivity Troponin" = "high_sensitivity_troponin",
+            "Pulse" = "pulse",
+            "Myocardical Infarction" = "mycardical_infarction",
+            "Congestive Heart Failure" = "congestive_heart_failure",
+            "Peripheral Vascular Disease" = "peripheral_vascular_disease"
+          ),
+          selected = "bmi"
+        ),
+        
+        selectInput(
+          inputId = "z",
+          label = "Color by:",
+          choices = c(
+            "Gender" = "gender",
+            "Age Category" = "age_cat",
+            "Type of heart failure" = "type_of_heart_failure",
+            "NYHA Cardiac Function Classification" = "nyha_cardiac_function_classification",
+            "Admission Ward" = "admission_ward",
+            "Death Within 28 Days" = "death_within_28_days",
+            "Re-admission Within 28 Days" = "re_admission_within_28_days",
+            "Death Within 3 Months" = "death_within_3_months",
+            "Re-admission Within 3 Months" = "re_admission_within_3_months",
+            "Occupation" = "occupation"
+          ),
+          selected = "occupation"
+        ),
+        
+        uiOutput("dymanic_checkboxes"),
+        
+        sliderInput(
+          inputId = "alpha",
+          label = "Alpha:",
+          min = 0, max = 1,
+          value = 0.8
+        ),
+        
+        sliderInput(
+          inputId = "size",
+          label = "Size:",
+          min = 0, max = 7,
+          value = 2
+        ),
+        
+        sliderInput(
+         inputId = "inpatient_number",
+         label = "Inpatient Number Range",
+         min = min(zigong_clean$inpatient_number, na.rm = TRUE),
+         max = max(zigong_clean$inpatient_number, na.rm = TRUE),
+         value = c(min(zigong_clean$inpatient_number, na.rm = TRUE), max(zigong_clean$inpatient_number, na.rm = TRUE))
+        ),
+        
+        textInput(
+          inputId = "plot_title",
+          label = "Plot title",
+          placeholder = "Enter text to be used as plot title"
+        ),
+        
+        actionButton(
+          inputId = "update_plot_title",
+          label = "Update plot title"
+        )
+      ),
+      
+      card(
+        markdown(
+          "These data were obtained from [Physionet](https://physionet.org/content/heart-failure-zigong/1.3/).
+
+          Hospitalized patients with heart failure: integrating electronic healthcare records and external outcome data"
+        ),
+        plotOutput(outputId = "scatterplot")
+      )
+    )
+  )
+)
+
+# Define server ----------------------------------------------------------------
+
+server <- function(input, output, session) {
+  new_plot_title <- eventReactive(
+    eventExpr = input$update_plot_title,
+    valueExpr = {
+      toTitleCase(input$plot_title)
+    }
+  )
+  
+  output$scatterplot <- renderPlot({
+    ggplot(data = zigong_clean, aes_string(x = input$x, y = input$y, color = input$z)) +
+      geom_point(alpha = input$alpha, size = input$size) +
+      labs(title = new_plot_title())
+  })
+}
+
+# Create the Shiny app object --------------------------------------------------
+
+shinyApp(ui = ui, server = server)
+
+```
+
