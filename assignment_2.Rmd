@@ -1,0 +1,502 @@
+---
+title: "HDAT9800 2024 Individual Assessment 2"
+author: "Maggie Burmeister"
+date: "2024-07-01"
+output:
+  html_document:
+    highlight: tango
+    df_print: paged
+    toc: true
+    toc_float: true
+    number_sections: true
+    fig_width: 14
+    fig_height: 24
+---
+
+# Prepare
+
+## Setup
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Install package
+
+```{r install_load_package}
+if (!requireNamespace("rvest", quietly = TRUE)) install.packages("rvest")
+if (!requireNamespace("knitr", quietly = TRUE)) install.packages("knitr")
+if (!requireNamespace("httr", quietly = TRUE)) install.packages("httr")
+if (!requireNamespace("readr", quietly = TRUE)) install.packages("readr")
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("Hmisc", quietly = TRUE)) install.packages("Hmisc")
+if (!requireNamespace("details", quietly = TRUE)) install.packages("details")
+if (!requireNamespace("paletteer", quietly = TRUE)) install.packages("paletteer", dependencies = TRUE)
+if (!require(janitor)) install.packages("janitor", dependencies = TRUE)
+if (!require(patchwork)) install.packages("patchwork", dependencies = TRUE)
+library(httr)
+library(readr)
+library(dplyr)
+library(janitor)
+library(tidyverse)
+library(knitr)
+library(ggplot2)
+library(patchwork)
+library(Hmisc) #Library for describe data
+library(details)
+library(rvest)
+library(rmarkdown)
+library(rlang)
+library(purrr)
+library(gridExtra)
+library(grid)
+library(paletteer)
+```
+# Task 1
+
+## Load and represent the dataset
+
+```{r read_csv_data}
+# Read data from the the csv file
+zigong <- readr::read_csv("C:/Users/maggi/OneDrive/Documents/GitHub/individual-marked-assessment-2-Maggie1910/zigong/dat.csv")
+
+#Represent data
+head(zigong)
+```
+
+## Describe raw data
+```{r summarise_raw_data}
+summarise_raw_data <- zigong %>%
+  describe()
+details::details(
+  summary = 'Click to show result!',
+  summarise_raw_data
+)
+```
+
+## Clean and transform dataframe
+
+### Clean column names
+
+#### Column name before clean
+```{r column_name_original}
+col_name_before <- names(zigong)
+details::details(
+  summary = 'Click to show results!',
+  col_name_before
+)
+```
+#### Column name after clean
+
+-   Copy data frame to data_clean: this this case zigong to zigong_clean
+
+```{r copy_dataframe}
+# Copy data frame to data_clean
+zigong_clean <- zigong %>%
+  as_tibble()
+```
+
+-   Clean column  names
+
+```{r column_name_clean}
+zigong_clean <- zigong %>% 
+  clean_names()
+
+col_name_after <- names(zigong_clean)
+details::details(
+  summary = 'Click to show results!',
+  col_name_after
+)
+```
+
+### Converting categorical columns to factors
+
+#### Review data frame before converting
+```{r review_df_convert_data}
+head(zigong_clean)
+```
+
+#### Convert and transform data
+
+```{r columns_to_factorize}
+# Convert relevant columns to factors with appropriate labels
+# Function to factorize
+convert_to_factor <- function(df, cols) {
+  for (col in cols) {
+    if (col %in% names(df)) {
+      df[[col]] <- as.factor(df[[col]])
+      print(paste("Column", col, "is converted to factor"))
+    } else {
+      print(paste("Columns", col, "does not exist in the data frame"))
+    }
+  }
+  return(df)
+}
+
+# Column name list
+categorial_columns <- c("destination_discharge", "admission_ward", "admission_way", "occupation", "discharge_department", "gender", "type_of_heart_failure", "nyha_cardiac_function_classification", "killip_grade", "type_ii_respiratory_failure", "consciousness", "respiratory_support", "outcome_during_hospitalization")
+
+zigong_clean <- convert_to_factor(zigong_clean, categorial_columns)
+```
+
+### Review data frame after converting
+
+```{r review df after converting}
+str(zigong_clean)
+head(zigong_clean)
+```
+
+### Renaming and Re-labeling the age_cat column
+
+#### Review 'levels' columns age_cat before processing
+```{r review_levels_age_cat_before}
+levels(
+  as.factor(
+    zigong_clean[["age_cat"]]
+    )
+  )
+```
+
+#### Renaming and Re-labeling the age_cat column
+
+```{r re-labeling_age-cat_column}
+# Define proper labels for the age_cat column
+age_labels <- c("21-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90+")
+
+# Relabel the age_cat column
+zigong_clean <- zigong_clean %>%
+  mutate(age_cat = factor(age_cat, labels = age_labels))
+```
+
+#### Review 'levels' age_cat column after processing
+
+```{r review_levels_age_cat_after}
+levels(
+  as.factor(
+    zigong_clean[["age_cat"]]
+    )
+  )
+```
+
+#### View data frame
+```{r review_df_age_cat_after}
+head(zigong_clean)
+```
+
+# Task 2 : Create Individual Plots
+
+## Visualize and display plots
+
+```{r viz}
+# Age Distribution
+p1 <- ggplot(zigong_clean, aes(x = age_cat)) +
+  geom_bar(fill = "#B9DDF1") + 
+  theme_minimal() +
+  labs(title = "Age Group Distribution", x = "Age Group", y = "Count")
+
+# Gender Distribution
+p2 <- ggplot(zigong_clean, aes(x = gender)) + 
+  geom_bar(fill = "#A5CFE9") +
+  theme_minimal() +
+  labs(title = "Gender Distribution", x = "Gender", y = "Count")
+
+# Height Distribution
+p3 <- ggplot(zigong_clean, aes(x = height)) +
+  geom_bar(fill = "#9FCAE6") +
+  theme_minimal() +
+  labs(title = "Height Distribution", x = "Height (m)", y = "Count")
+
+# Weight Distribution
+p4 <- ggplot(zigong_clean, aes(x = weight)) +
+  geom_histogram(binwidth = 5, fill = "#8DBBDC") +
+  theme_minimal() +
+  labs(title = "Weight Distribution", x = "Weight (kg)", y = "Count")
+
+# BMI Distribution
+p5 <- ggplot(zigong_clean, aes(x = bmi)) +
+  geom_histogram(binwidth = 5, fill = "#78A9CE") +
+  theme_minimal() +
+  labs(title = "BMI Distribution", x = "BMI", y = "Count")
+
+# Type of Heart Failure
+p6 <- ggplot(zigong_clean, aes(x = type_of_heart_failure)) +
+  geom_bar(fill = "#699AC2") +
+  theme_minimal() +
+  labs(title = "Type of Heart Failure Distribution", x = "Type of Heart Failure", y = "Count")
+
+# Numeric variable 1: High Sensitivity Troponin
+p7 <- ggplot(zigong_clean, aes(x = high_sensitivity_troponin)) +
+  geom_histogram(binwidth = 0.1, fill = "#5F90BE") +
+  scale_x_log10()+
+  theme_minimal() +
+  labs(title = "High Sensitivity Troponin Distribution", x = "HS Troponin", y = "Count")
+
+# Numeric variable 2: Visit times
+p8 <- ggplot(zigong_clean, aes(x = visit_times)) +
+  geom_histogram(binwidth = 5, fill = "#4D7EAB") +
+  theme_minimal() +
+  labs(title = "Visit times Distribution", x = "Visit times", y = "Count")
+
+# Numeric variable 3: Systolic blood pressure
+p9 <- ggplot(zigong_clean, aes(x = systolic_blood_pressure)) +
+  geom_histogram(binwidth = 5, fill = "#3F6E9A") +
+  theme_minimal() +
+  labs(title = "Systolic BP Distribution", x = "Systolic BP (mmHg)", y = "Count")
+
+# Numeric variable 4: Diastolic blood pressure
+p10 <- ggplot(zigong_clean, aes(x = diastolic_blood_pressure)) +
+  geom_histogram(binwidth = 5, fill = "#2E5B88") +
+  theme_minimal() +
+  labs(title = "Diastolic BP Distribution", x = "Diastolic BP (mmHg)", y = "Count")
+# Display plots
+p1
+p2
+p3
+p4
+p5
+p6
+p7
+p8
+p9
+p10
+```
+
+## Generate plots above into slides show
+
+### Create list column_dict and function to display plots into slides
+
+#### Create column dictionary
+
+```{r col_viz_task2}
+# List of col to plot
+col_dict <- list(
+  age_cat = "distribution",
+  height = "distribution",
+  weight = "distribution",
+  high_sensitivity_troponin = "distribution",
+  systolic_blood_pressure = "distribution",
+  diastolic_blood_pressure = "distribution",
+  type_of_heart_failure = "count",
+  gender = "count",
+  admission_ward = "count",
+  occupation = "count"
+)
+```
+
+#### Create function to display plots into slides
+
+```{r col_viz_task2_function}
+
+# Function to create plot
+create_plot <- function(data, column, plot_type) {
+  # Define ID column name
+  column_id_unique = "inpatient_number"
+  
+  # The function creates a title with the first letter capitalized
+  create_title <- function(col_name) {
+    if (plot_type == "distribution") {
+      paste("Distribution of", tools::toTitleCase(gsub("_", " ", col_name)))
+    }
+    else {
+      paste("Count of", tools::toTitleCase(gsub("_", " ", col_name)))
+    }
+  }
+  
+  # Define base theme
+  base_theme <- theme(
+   plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+   axis.title = element_text(size = 8),
+   axis.text = element_text(size = 6),
+   legend.title = element_text(size = 8),
+   legend.text = element_text(size = 6),
+   legend.key.size = unit(0.5,"cm")
+  )
+  
+  if (plot_type == "distribution") {
+    # Distribution plot for continuous variables
+    p <- ggplot(data, aes(x = !!sym(column), y = !!sym(column_id_unique))) +
+      geom_point(fill = "#2C7E41", color ="#2C7E41") +
+      ggtitle(create_title(column)) +
+      coord_flip() +
+      labs(x = tools::toTitleCase(gsub("_", " ", column)),
+           y = tools::toTitleCase(gsub("_", " ",column_id_unique))) +
+      theme_minimal() +
+      base_theme
+  } else if (plot_type == "count") {
+    
+    # Bar chart for categorical variables
+    p <- ggplot(data, aes(x = !!sym(column), fill = !!sym(column))) +
+      geom_bar() +
+      geom_text(stat = 'count', aes(label = ..count..), vjust = -0.5) + 
+      scale_fill_paletteer_d("lisa::AlbrenchDurer") +
+      scale_fill_brewer(palette = "Blues") +
+      ggtitle(create_title(column)) +
+      coord_flip() +
+      labs(x = tools::toTitleCase(gsub("_", " ", column)),
+           y = "Count",
+           fill = tools::toTitleCase(gsub("_", " ", column))) +
+      theme(axis.text.y = element_text(angle = 0)) +
+      theme_minimal() +
+      base_theme
+  }
+  
+  return(p)
+}
+```
+
+### Display the slides
+```{r display the slides}
+# Use the function
+plot_list <- map(names(col_dict), ~create_plot(zigong_clean, .x, col_dict[[.x]]))
+# Display
+plot_list
+```
+
+```{r viz_task2}
+
+# Create a list of charts
+
+
+# Add margin for subplot grid
+margin_grid = theme(plot.margin = unit(c(0.5, 1, 1, 0.5), "cm"))
+tg <- textGrob('Health Data Visualisation & Communication', gp = gpar(fontsize = 16, fontface = 'bold')) 
+sg <- textGrob('Visualization Data of Hospitalized patients with heart failure: integrating electronic healthcare records and external outcome data', gp = gpar(fontsize = 10))
+margin_title <- unit(0.5, "line")
+
+# Grid each column plot
+ grid.arrange(tg, sg, 
+             arrangeGrob(grobs = lapply(plot_list, "+", margin_grid),
+                         ncol = 2),
+             heights = unit.c(grobHeight(tg) + 1.2*margin_title, 
+                               grobHeight(sg) + margin_title, 
+                               unit(1,"null")))
+```
+
+# Task 3
+
+## Grouping slides using patchwork lib
+
+For compare and contrast the graphs above, I will group as below:
+Slide 1: Height, Weight, BMI (Height and Weight will have a positive correlation to BMI)
+Slide 2: Age, Type of Heart Failure (I want to see if Age have any relation to Type of Heart Failure)
+Slide 3: Weight, Type of Heart Failure (I want to see if Weight have any relation to Type of Heart Failure)
+Slide 4: HS Troponin, Type of Heart Failure (I want to see if HS Troponin have any relation to Type of Heart Failure as HS Troponin is a biomarker that is used to detect cardiac injury, including myocardial infartion. Elevated levels of hs-troponin in the blood can indicate damage to the heart muscle. This biomarker is particularly sensitive and can detect even small amounts of cardiac injury )
+Slide 5: Type of Heart Failure, Systolic Blood Pressure, Diastolic Blood Pressure (Blood pressure levels can influence the development, progression, and outcomes of heart failure)
+
+```{r viz into small multiples}
+#Combine plots into slide
+slide1 <- p3 + p4 + p5 + plot_layout(ncol =3)
+slide2 <- p1 + p6 + p8 + plot_layout(ncol =3)
+slide3 <- p4 + p6 + plot_layout(ncol =2)
+slide4 <- p6 + p7 + plot_layout(ncol =2)
+slide5 <- p6 + p9 + p10 + plot_layout(ncol =3)
+
+# Display slides
+slide1
+slide2
+slide3
+slide4
+slide5
+```
+
+### Exporting Plots to PDF slides for Presentation
+```{r save to pdf slides for presentation}
+ggsave("slide1.pdf", slide1, width = 10, height = 5)
+ggsave("slide2.pdf", slide2, width = 10, height = 5)
+ggsave("slide3.pdf", slide3, width = 10, height = 5)
+ggsave("slide4.pdf", slide4, width = 10, height = 5)
+ggsave("slide5.pdf", slide5, width = 10, height = 5)
+```
+
+## Using ggplot2 facetting
+
+```{r filter out non-defite values}
+# Ensure the 'age' column is numeric
+zigong_clean <- zigong_clean %>%
+  mutate(age_cat = as.numeric(age_cat))
+# Filter out non-finite values for the each plot
+zigong_clean_age <- zigong_clean %>%
+  filter(is.finite(age_cat))
+zigong_clean_bmi <- zigong_clean %>%
+  filter(is.finite(bmi))
+zigong_clean_hs_troponin <- zigong_clean %>%
+  filter(is.finite(high_sensitivity_troponin))
+zigong_clean_systolic_bp <- zigong_clean %>%
+  filter(is.finite(systolic_blood_pressure))
+zigong_clean_diastolic_bp <- zigong_clean %>%
+  filter(is.finite(diastolic_blood_pressure))
+```
+
+### Age Distribution by Type of Heart Failure
+
+```{r age distribution by type_of_heart_failure}
+# Viz the plot
+slide2_1 <- ggplot(zigong_clean_age, aes(x = age_cat)) +
+  geom_histogram(binwidth = 5, fill = "#81B1D6") +
+  theme_minimal() +
+  labs(title = "Age Distribution by Type of Heart Failure", x = "Age", y = "Count") +
+  facet_wrap(~ type_of_heart_failure)
+
+# Display graph
+slide2_1
+```
+
+### BMI Distribytion by Type of Heart Failure 
+
+```{r bmi distribution by type_of_heart_failure}
+# Viz the plot
+slide2_2 <- ggplot(zigong_clean_bmi, aes(x = bmi)) +
+  geom_histogram(binwidth = 5, fill = "#5F90BE") +
+  theme_minimal() +
+  labs(title = "BMI Distribution by Type of Heart Failure", x = "BMI", y = "Count") +
+  facet_wrap(~ type_of_heart_failure)
+
+# Display graph
+slide2_2
+```
+
+### HS Troponin Distribution by Type of Heart Failure
+
+```{r hs_troponin distribution by type_of_heart_failure}
+# Viz the plot
+slide2_3 <- ggplot(zigong_clean_hs_troponin, aes(x = high_sensitivity_troponin)) +
+  geom_histogram(binwidth = 5, fill = "#699AC2") +
+  theme_minimal() +
+  scale_x_log10() +
+  labs(title = "HS Troponin Distribution by Type of Heart Failure", x = "HS Troponin", y = "Count") +
+  facet_wrap(~ type_of_heart_failure)
+
+# Display graph
+slide2_3
+```
+
+### Systolic BP Distrinution by Type of Heart Failure
+
+```{r systolic_bp distribution by type_of_heart_failure}
+# Viz the plot
+slide2_4 <- ggplot(zigong_clean_systolic_bp, aes(x = systolic_blood_pressure)) +
+  geom_histogram(binwidth = 5, fill = "#78A9CE") +
+  theme_minimal() +
+  labs(title = "Systolic BP Distribution by Type of Heart Failure", x = "Systolic BP", y = "Count") +
+  facet_wrap(~ type_of_heart_failure)
+
+# Display graph
+slide2_4
+```
+
+### Diastolic BP Distribution by Type of Heart Failure
+
+```{r diastolic_bp distribution by type_of_heart_failure}
+# Viz the plot
+slide2_5 <- ggplot(zigong_clean_diastolic_bp, aes(x = diastolic_blood_pressure)) +
+  geom_histogram(binwidth = 5, fill = "#4D7EAB") +
+  theme_minimal() +
+  labs(title = "Diastolic BP Distribution by Type of Heart Failure", x = "Diastolic BP", y = "Count") +
+  facet_wrap(~ type_of_heart_failure)
+
+# Display graph
+slide2_5
+```
+
+
+

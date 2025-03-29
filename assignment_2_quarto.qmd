@@ -1,0 +1,486 @@
+---
+title: "HDAT9800 2024 Individual Assessment 2"
+author: "Maggie Burmeister"
+date: "2024-07-01"
+format:
+  html:
+    theme: cosmo
+    fontsize: 1.1em
+    linestretch: 1.5
+    highlight-style: tango
+    code-line-numbers: true
+    code-copy: true
+    code-link: true
+    df-print: paged
+    toc: true
+    toc-location: left
+    toc-depth: 4
+    number-sections: true
+    number-depth: 4
+    smooth-scroll: true
+    warning: false
+slide-format: revealjs
+editor: visual
+---
+
+# Prepare
+
+## Install package
+
+```{r}
+#| label: install_load_package
+#| output: false
+
+if (!requireNamespace("rvest", quietly = TRUE)) install.packages("rvest")
+if (!requireNamespace("knitr", quietly = TRUE)) install.packages("knitr")
+if (!requireNamespace("httr", quietly = TRUE)) install.packages("httr")
+if (!requireNamespace("readr", quietly = TRUE)) install.packages("readr")
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("Hmisc", quietly = TRUE)) install.packages("Hmisc")
+if (!requireNamespace("details", quietly = TRUE)) install.packages("details")
+if (!requireNamespace("janitor", quietly = TRUE)) install.packages("janitor", dependencies = TRUE)
+if (!requireNamespace("paletteer", quietly = TRUE)) install.packages("paletteer", dependencies = TRUE)
+library(readr)
+library(dplyr)
+library(janitor)
+library(tidyverse)
+library(ggplot2)
+library(Hmisc) #Library for describe data
+library(details)
+library(rvest)
+library(rmarkdown)
+library(rlang)
+library(purrr)
+library(gridExtra)
+library(grid)
+library(paletteer)
+```
+
+# Task 1
+
+## Load and represent the dataset
+
+```{r}
+#| label: read_csv_data
+#| output: false                                                                                                                                                                              
+
+# Read data from the the csv file
+zigong <- read_csv("C:/Users/maggi/OneDrive/Documents/GitHub/individual-marked-assessment-2-Maggie1910/zigong/dat.csv", show_col_types = FALSE)
+```
+
+```{r}
+#| label: preview_dataset
+
+#Represent data
+head(zigong)
+```
+
+## Describe raw data
+
+### Summarise
+
+```{r}
+#| label: summarise_raw_data
+
+summarise_raw_data <- zigong %>%
+  describe()
+```
+
+::: {.callout-note collapse="true"}
+### Expand to shrink content
+
+```{r}
+#| label: preview_summarise_data
+
+summarise_raw_data
+```
+:::
+
+## Clean and transform data frame
+
+### Clean column names
+
+#### Column name before clean
+
+```{r}
+#| label: column_name_original
+
+col_name_before <- names(zigong)
+```
+
+::: {.callout-note collapse="true"}
+#### Expand to shrink content
+
+```{r}
+#| label: review_col_name_before
+
+col_name_before
+```
+:::
+
+#### Column name after clean
+
+-   Copy data frame to data_clean: this this case zigong to zigong_clean
+
+```{r}
+#| label: copy_dataframe
+
+# Copy data frame to data_clean
+zigong_clean <- zigong %>%
+  as_tibble()
+```
+
+-   Clean column names
+
+```{r}
+#| label: column_name_clean
+
+zigong_clean <- zigong %>% 
+  clean_names()
+
+col_name_after <- names(zigong_clean)
+```
+
+::: {.callout-note collapse="true"}
+#### Expand to shrink content
+
+```{r}
+#| label: review_col_name_after
+
+col_name_after
+```
+:::
+
+### Converting categorical columns to factors
+
+#### Review data before convert data
+
+```{r}
+#| label: review_df_convert_data
+
+head(zigong_clean)
+```
+
+#### Convert and transform data
+
+```{r}
+#| label: columns_to_factorize
+
+# Convert relevant columns to factors with appropriate labels
+# Function to convert to factor
+convert_to_factor <- function(df, cols) {
+  for (col in cols) {
+    if (col %in% names(df)) {
+      df[[col]] <- as.factor(df[[col]])
+      print(paste("Column", col, "is converted to factor"))
+    } else {
+      print(paste("Column", col, "does not exist in the dataframe"))
+    }
+  }
+  return(df)
+}
+
+## Column name list
+categorical_columns <- c("destination_discharge", "admission_ward", "admission_way", "occupation", "discharge_department", "gender", "type_of_heart_failure", "nyha_cardiac_function_classification", "Killip_grade", "respiratory_support", "consciousness", "outcome_during_hospitalization")
+
+zigong_clean <- convert_to_factor(zigong_clean, categorical_columns)
+```
+
+#### Review data after convert data
+
+```{r}
+#| label: review_df_after_convert
+
+head(zigong_clean)
+```
+
+### Renaming and Re-labeling the age_cat column
+
+#### Review `levels` column age_cat before processing
+
+```{r}
+#| label: review_levels_age_cat_before
+
+levels(
+  as.factor(
+    zigong_clean[["age_cat"]]
+    )
+  )
+```
+
+#### Renaming and re-labeling column
+
+```{r}
+#| label: re-labeling_age-cat_column
+
+# Define proper labels for the age_cat column
+age_labels <- c("21-29", "30-39", "40-49", "50-59", "60-69", "70-79", "80-89", "90+")
+
+# Relabel the age_cat column
+zigong_clean <- zigong_clean %>%
+  mutate(age_cat = factor(age_cat, labels = age_labels))
+```
+
+#### Review `levels` column age_cat after processing
+
+```{r}
+#| label: review_levels_age_cat_after
+
+levels(
+  as.factor(
+    zigong_clean[["age_cat"]]
+    )
+  )
+```
+
+#### View data frame
+
+```{r}
+#| label: review_df_age_cat_after
+
+head(zigong_clean)
+```
+
+# Task 2 : Create Individual Plots
+
+## Create list column_dict and function to display plot
+
+### Create column dictionary
+
+```{r}
+#| label: col_viz_task2
+
+# List of type column to plot
+column_dict <- list(
+  age_cat = "distribution",
+  height = "distribution",
+  weight = "distribution",
+  high_sensitivity_troponin = "distribution",
+  systolic_blood_pressure = "distribution",
+  diastolic_blood_pressure = "distribution",
+  type_of_heart_failure = "count",
+  gender = "count",
+  admission_ward = "count",
+  occupation = "count" 
+)
+```
+
+### Create function to display plot
+
+```{r}
+#| label: col_viz_task2_function
+
+# Function to create plot
+create_plot <- function(data, column, plot_type) {
+  # Define ID column name
+  column_id_unique = "inpatient_number"
+  
+  # The function creates a title with the first letter capitalized
+  create_title <- function(col_name) {
+    if (plot_type == "distribution") {
+      paste("Distribution of", tools::toTitleCase(gsub("_", " ", col_name)))
+    }
+    else {
+      paste("Count of", tools::toTitleCase(gsub("_", " ", col_name)))
+    }
+  }
+  
+  # Define base theme
+  base_theme <- theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+      axis.title = element_text(size = 8),
+      axis.text = element_text(size = 6),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 6),
+      legend.key.size = unit(0.5, "cm")
+  )
+  
+  if (plot_type == "distribution") {
+    
+    # Distribution plot for continuous variable
+    p <- ggplot(data, aes(x = !!sym(column), y = !!sym(column_id_unique))) +
+      geom_point(fill = "#657359FF", color = "#657359FF") +
+      ggtitle(create_title(column)) + 
+      coord_flip() +
+      labs(x = tools::toTitleCase(gsub("_", " ", column)), 
+           y = tools::toTitleCase(gsub("_", " ", column_id_unique))) +
+      theme_minimal() +
+      base_theme
+    
+  } else if (plot_type == "count") {
+    
+    # Column graph for categorical variables
+    p <- ggplot(data, aes(x = !!sym(column), fill=!!sym(column))) +
+      geom_bar() +
+      # geom_text(stat = 'count', aes(label = ..count..), vjust = -0.5) +
+      scale_fill_paletteer_d("lisa::AlbrechtDurer") +
+      # scale_fill_brewer(palette="Blues") +
+      ggtitle(create_title(column)) +
+      coord_flip() +
+      labs(x = tools::toTitleCase(gsub("_", " ", column)), 
+           y = "Count",
+           fill = tools::toTitleCase(gsub("_", " ", column))) +
+      theme(axis.text.y = element_text(angle = 0)) +
+      theme_minimal() +
+      base_theme
+  }
+  
+  return(p)
+}
+
+# Use the function
+# plot_list <- map(names(column_dict), ~create_plot(zigong_clean, .x, column_dict[[.x]]))
+
+```
+
+```{r}
+#| label: viz_task2
+#| fig-width: 14
+#| fig-height: 26
+
+# Create a list of charts
+
+
+# Add margin for subplot grid
+# margin_grid = theme(plot.margin = unit(c(0.5, 1, 1, 0.5), "cm"))
+# 
+# tg <- textGrob('Health Data Visualisation & Communication', gp = gpar(fontsize = 16, fontface = 'bold'))
+# sg <- textGrob('Visualization Data of Hospitalized patients with heart failure: integrating electronic healthcare records and external outcome data', gp = gpar(fontsize = 10))
+# margin_title <- unit(0.5, "line")
+# 
+# # Grid each column plot
+# 
+# grid.arrange(tg, sg, 
+#              arrangeGrob(grobs = lapply(plot_list, "+", margin_grid),
+#                          ncol = 2),
+#              heights = unit.c(grobHeight(tg) + 1.2*margin_title, 
+#                               grobHeight(sg) + margin_title, 
+#                               unit(1,"null")))
+```
+
+## Slideshow Task 2
+
+<div>
+
+<iframe class="slide-deck" src="presentation_task2/index.html" width="100%" height="600px"></iframe>
+
+</div>
+
+# Task 3: Create Plot With Use “small multiples”
+
+## Create Function to Plot Use “small multiples”
+
+```{r}
+#| label: function_create_facet_plot
+
+# Function to create plot
+create_plot_facet <- function(data, column, by_column, plot_type, facet_type) {
+  # Set facet type
+  create_facet <- function(facet_type, by_column) {
+    if (facet_type == "wrap") {
+      facet_wrap(
+        as.formula(
+          paste(". ~", by_column)
+          )
+        )
+    } else if (facet_type == "grid") {
+      facet_grid(
+        as.formula(
+          paste(by_column, "~ .")
+        )
+      )
+    }
+  }
+  
+  # The function creates a title with the first letter capitalized
+  create_title <- function(col_name, by_column) {
+    if (plot_type == "distribution") {
+      paste("Distribution of", 
+            tools::toTitleCase(gsub("_", " ", col_name)), 
+            "by", 
+            tools::toTitleCase(gsub("_", " ", by_column)))
+    }
+    else {
+      paste("Count of", 
+            tools::toTitleCase(gsub("_", " ", col_name)), 
+            "by", 
+            tools::toTitleCase(gsub("_", " ", by_column)))
+    }
+  }
+  
+  # Define base theme
+  base_theme <- theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+      axis.title = element_text(size = 8),
+      axis.text = element_text(size = 6),
+      legend.title = element_text(size = 8),
+      legend.text = element_text(size = 6),
+      legend.key.size = unit(0.5, "cm")
+  )
+  
+  if (plot_type == "distribution") {
+    
+    # Distribution plot for continuous variable
+    # p <- ggplot(data, aes(x = !!sym(column), y = !!sym(column_id_unique))) +
+    #   geom_point(fill = "#657359FF", color = "#657359FF") +
+    #   ggtitle(create_title(column)) +
+    #   coord_flip() +
+    #   labs(x = tools::toTitleCase(gsub("_", " ", column)), 
+    #        y = tools::toTitleCase(gsub("_", " ", column_id_unique))) +
+    #   theme_minimal() +
+    #   base_theme
+    
+    # Visualization
+    p <- ggplot(data, aes(x = !!sym(column))) +
+      geom_density(colour = "#FFFFFF", fill = "#9AA582", alpha=0.9) +
+      ggtitle(create_title(column, by_column)) +
+      labs(x = tools::toTitleCase(gsub("_", " ", column)), 
+           y = "Frequency") +
+      theme_minimal() +
+      base_theme +
+      create_facet(facet_type, by_column)
+    
+  } else if (plot_type == "count") {
+    
+    # Column graph for categorical variables
+    p <- ggplot(data, aes(x = !!sym(column))) +
+      geom_bar(colour = "#FFFFFF", fill = "#9AA582") +
+      ggtitle(create_title(column, by_column)) +
+      coord_flip() +
+      labs(x = tools::toTitleCase(gsub("_", " ", column)), 
+           y = "Count") +
+      theme(axis.text.y = element_text(angle = 0)) +
+      theme_minimal() +
+      base_theme +
+      create_facet(facet_type, by_column)
+  }
+  
+  return(p)
+}
+```
+
+## Sample display plot
+
+::: {.callout-note collapse="true"}
+### Expand to shrink content
+
+```{r}
+#| label: facet_age_by_type_of_heart_failure
+
+create_plot_facet(zigong_clean, "age_cat", "type_of_heart_failure", "count", "grid")
+```
+
+```{r}
+#| label: facet_diastolic_blood_pressure_by_type_of_heart_failure
+
+create_plot_facet(zigong_clean, "diastolic_blood_pressure", "type_of_heart_failure", "distribution", "wrap")
+```
+:::
+
+## Slideshow for Task 3
+
+<div>
+
+<iframe class="slide-deck" src="presentation_task3/index.html" width="100%" height="600px"></iframe>
+
+</div>
