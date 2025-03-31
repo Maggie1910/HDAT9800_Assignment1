@@ -1,5 +1,5 @@
 ---
-title: "HDAT9800 2024 Individual Assessment 1"
+title: "HDAT9800 2024 Individual Assessment 1[Basic (visual) exploratory data analysis]"
 author: "Maggie Burmeister"
 date: "2024-06-17"
 output:
