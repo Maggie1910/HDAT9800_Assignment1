@@ -1,5 +1,6 @@
 ---
-title: "HDAT9800 2024 Individual Assessment 3(Build a data dashboard)"
+title: "HDAT9800 2024 Individual Assessment 3"
+subtitle: "Build a data dashboard"
 author: "Maggie Burmeister"
 date: "2024-07-16"
 format:
